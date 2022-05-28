@@ -1,0 +1,152 @@
+官网：https://docs.mongodb.com/manual/
+文档数据库
+分布式文件存储 C++编写
+介于关系型和非关系型数据库之间 更偏向于NoSql
+
+面向集合存储 适合存储对象类型     json
+支持查询以及动态查询
+文件存储格式为BSON(一种JSON的扩展)   松散 不要求每行拥有严格的字段
+支持复制、和故障恢复的分片
+4.0之后支持事务 与mysql一样的级别 不支持集合事务
+索引 聚合统计分析 关联...
+应用：游戏 物流(过程中会不断更新) 社交(朋友圈、聊天记录json) 视频直播(用户、礼物) 大数据
+
+mongodb.com/try/download/community
+electerm.app 云服务器
+/bin  mongo mongod mongos路由
+mongod --port --fork(后台) --logpath --dbpath
+ps aux|grep mongo
+show dbs;
+
+docker 加-p相当于在外部宿主机的端口映射到容器上的端口
+用docker将服务端启动 在外部的客户端一定可以访问 因为只要是客户端就能访问已启动的服务端
+核心概念：
+    库：默认的数据库为"test",数据库存储在启动指定的data目录中 每个库都有自己的集合和权限
+    集合：类似表的概念  没有固定的结构可以插入不同格式和类型的数据
+    文档：键值对BSON 不需要设置相同的字段，相同的字段不需要相同的数据类型
+use baizhi 创建并使用
+db 查看当前使用库
+show dbs | show databases 没有数据不显示
+    admin 权限最高root
+    local 不会被复制
+    config 分片配置信息
+db.dropDatabase();
+show collections |　show tables
+db.createColletion('user' , [option])
+    capped true固定集合 需要指定size参数 当达到最大值，会自动覆盖最早的文档 max 固定集合中包含文档的最大数量 有capped 必须有size
+db.emps.insert(); emps首先不存在 先创建再插入
+集合没有修改操作
+db.products.drop();
+文档：
+    json格式严谨 bson可以不写引号
+    _id 文档的编号 可以默认 可以指定
+    db.集合名称.insert
+    db.集合名称.insertmany([{}])
+    db.集合名称.insert() 也可以放入多条数据
+    for(let i=3;i<9;i++){
+        db.users.insert({"_id":i,"name":i,age:i+10})
+    }
+    db.users.find();
+    db.users.remove(
+        {
+            justOne
+            wirteConcern
+        }
+    )
+    db.users.remove({})
+    db.users.remove({_id=1})
+    db.users.remove({_id="自动生成的id"})
+    db.users.update ： 将原来的删除 将修改的重新插入
+    db.users.update({&set}) ： 保留原来
+    查询
+    find() 以非结构化显示
+    pretty() 结构化
+    db.users.find().pretty(); 超过长度进行格式化
+    db.users.find({age:24})
+    db.users.find({age:{$gte:24}})
+    db.users.find({age:24,age:{$get:29}}) ,表示and 但是如果key相同后面的条件会覆盖前面的条件
+    db.users.find({&or:[{}.{}]})
+    db.users.find({age:{$gte:24},$or:[{},{}]}) and与or一起用
+    数组
+    db.users.find({likes:""})  数组查询
+    db.users.find({name:/x/})  模糊查询
+    db.users.find({likes:/x/}) 数组模糊查询 使用正则表达式可以是实现近似模糊查询功能
+    db.users.find({likes:{$size:3}})
+    排序
+    db.users.find().sort({age:1,name:1}) 1升序 -1降序
+    db.users.find().sort({age:1,name:1}).skip(x).limit(y)  x表示起始 y表示分页几条
+    top查看linux cpu
+    db.orders.count() db.orders.find({}).count()总条数
+    去重
+    db.users.distinct('字段')
+    返回指定字段 投影 db.集合名称.find({条件},{name:1,age:1})   1 返回 2 不返回  下划线默认返回
+    $type
+    db.col.find(key:{$type:2}).pretty()    查询title字段符合类型2(String)类型的数据
+    数字默认类型 Double
+
+    索引
+    db.users.createIndex(name:1) 1升序 -1倒序
+    db.users.createIndex(name:1.,{参数}) 1升序 -1倒序 unique代表如果有数据重复则无法创建索引
+    db.users.getIndexes(); 查看所有索引
+    db.users.dropIndexes() 删除所有索引 但不包括_id 因为_id一直都有
+    db.users.totalIndexSize()
+    db.users.dropIndexes()
+    db.users.dropIndex('name_index'}); 直接写名字
+    db.users.createIndex({}.{})  复合索引
+    面试 id name age ----》有右必须有左 左前缀原则
+    聚合
+    db,tests.aggregate([{$group:{_id:'$by_user','sum_by_user':{$sum:1}}}]);  sum_by_user代表统计结果 $sum 1代表求和 2代表求和结果*2
+    $avg $min:'$likes' $min $push将值加入数组中展示出来 $addToSet会判断重复值
+传统方式安装 默认没有开启远程权限
+    需要--bindip 0.0.0.0
+Docker 方式安装 默认开启远程连接权限
+
+SpringBoot整合MongoDB
+    文档：使用注解 将对象映射到文档
+        @Document @id @Field @Transient
+        insert()参数可以放一个集合 save()只能单条
+    查询BasicQuery可以使用json字符串方式查询
+
+副本集：有自动鼓鼓掌恢复功能的主从集群 高可用：记录操作日志
+    宕机 从节点选举
+    副本集名称必须一致
+    当只剩下一个节点的时候 副本集对外不可用 当其他节点恢复的时候可以再次使用
+
+分片sharding 将数据拆分，将其分散在不同机器的过程 支持自动分片
+    路由进程 接受客户端的请求 转发到对应的分片 聚合返回
+    架构：router ConfigServers Shard 并且ConfigServers与Shard 每一片都建议是副本集
+    片键 shard key 负载均衡策略决定是否均匀   /   _id:hash 通过id来进行hash
+    1、--shardsvr 代表自己是分片服务器
+    2、--configsvr 代表自己是配置服务   config:true
+    3、启动router的时候一定要告诉configServer在哪
+        添加分片信息
+        指定分片的数据库
+        设置片键 使用hash会更均匀
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
